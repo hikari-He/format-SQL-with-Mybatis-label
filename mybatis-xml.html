@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XML 解析验证</title>
+    <style>
+        /* .container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        } */
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+
+        .xml-container {
+            /* border: 1px solid #ccc; */
+            padding: 10px;
+            width: 75%;
+            overflow: auto;
+            /* font-size: 18px;    设置字体大小为 18px */
+        }
+
+        .xml-container pre {
+            font-size: 18px;
+            min-height: 40px; /* 设置最小高度为 100px */
+            border: 1px solid #ccc; /* 添加边框 */
+            padding: 10px; /* 添加内边距 */
+            overflow-y: auto; /* 设置溢出时显示滚动条 */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="xml-container">
+            <!-- <h2>原始 XML 字符串</h2> -->
+            <pre id="originalXml" contenteditable></pre>
+        </div>
+        <button id="parseButton">解析 XML</button>
+        <div class="xml-container">
+            <h3>递归解析后的数据</h3>
+            <pre id="loopParsedData" style="font-size: 18px;"></pre>
+        </div>
+        <!-- <div class="xml-container">
+            <h2>普通解析后的数据</h2>
+            <pre id="parsedData"></pre>
+        </div> -->
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sql-formatter/dist/sql-formatter.min.js"></script>
+    <script>
+
+        var parseButton = document.getElementById("parseButton");
+
+        var originalXmlPre = document.getElementById("originalXml");
+
+        var loopParsedDataPre = document.getElementById("loopParsedData");
+
+        // 给按钮绑定点击事件
+        parseButton.addEventListener("click", function () {
+
+            var xmlString = originalXmlPre.textContent;
+            var parsedData = '';
+            loopParsedDataPre.textContent = parsedData;
+
+            var parser = new DOMParser();
+            var xmlDoc = parser.parseFromString(xmlString, "text/xml");
+
+            // var originalXmlElement = document.getElementById('originalXml');
+            // var parsedDataElement = document.getElementById('parsedData');
+
+            // originalXmlElement.textContent = xmlString;
+            var parsedData = '';
+            var elements = xmlDoc.getElementsByTagName('*');        // 获取所有元素
+
+            var stack = []
+            var loopParsedDataElement = document.getElementById('loopParsedData');
+            parsedData = ""
+
+            elements[0]["deepdeep"] = 0
+            stack.push(elements[0]);
+            preDeep = 0;
+            deep_string_dict = {}
+            while (stack.length != 0) {
+                var childNode = stack.pop();
+                deep = childNode["deepdeep"];
+                console.log(childNode.tagName);
+                console.log(childNode.nodeType);
+                console.log(childNode.childNodes);
+                console.log("stack: " + stack.length);
+                // childNode["deepdeep"] = "aaa"
+                console.log("deep" + childNode["deepdeep"]);
+                console.log(deep_string_dict);
+                console.log("\n");
+
+                for (var deepTemp = preDeep; deepTemp >= deep; deepTemp--) {
+                    if (deep_string_dict.hasOwnProperty(deepTemp)) {
+                        // console.log("Key 3 exists");
+                        parsedData += " ".repeat(4 * deepTemp) + deep_string_dict[deepTemp]
+                        delete deep_string_dict[deepTemp]
+                    }
+                }
+
+
+                // 如果是元素节点，则添加到子标签数组中
+                if (childNode.nodeType === 1) {         // 1 表示元素节点
+                    var idAttribute = childNode.getAttribute('id');
+                    if (childNode.getAttribute('id') !== null) {
+                        parsedData += " ".repeat(4 * deep) + parseSQLLabel(childNode) + "\n";
+                    }
+                    else if (childNode.getAttribute('test') !== null) {
+                        parsedData += " ".repeat(4 * deep) + parseIfLabel(childNode);
+                    }
+                    else if (childNode.getAttribute('collection') !== null) {
+                        parsedData += " ".repeat(4 * deep) + parseForeachLabel(childNode);
+                    }
+                    else{
+                        parsedData += " ".repeat(4 * deep) + parseOtherLabel(childNode);
+                    }
+
+                    for (var i = childNode.childNodes.length - 1; i >= 0; i--) {
+                        childNode.childNodes[i]["deepdeep"] = deep + 1;
+                        stack.push(childNode.childNodes[i]);
+                    }
+                    // loopParseXML(childNode, parsedData);
+                    deep_string_dict[deep] = "</" + childNode.tagName + ">" + "\n";
+                    // parsedData += "</" + childNode.tagName + ">\n";
+                    // subLabels.push(childNode.tagName);
+                }
+                // 如果是文本节点
+                else if (childNode.nodeType === 3) {        // 3 表示文本节点
+                    var content = childNode.nodeValue.trim();       // 去除文本节点两侧的空白
+                    console.log(content)
+                    var start = ""
+                    var end = ""
+                    // console.log(content[0] + content[1])
+                    // console.log(content[content.length - 2] + content[content.length - 1])
+                    if (content[0] == ")"){
+                        start = ")"
+                        content = content.substring(1, content.length)
+                    }
+                    if (content[content.length - 1] == "("){
+                        end = "("
+                        content = content.substring(0, content.length-1)
+                    }
+                    resultString = start + addPrefixToEachLine(formatSQL(content), " ".repeat(4 * deep)) + end + "\n";
+                    resultString = resultString.replace("\n\n", "\n");
+                    resultString = resultString.replace("\n \n", "\n");
+                    parsedData += resultString;
+                }
+                preDeep = deep
+            }
+            if(deep_string_dict.length != 0){
+                for (var deepTemp = 10; deepTemp >= 0; deepTemp--) {
+                    if (deep_string_dict.hasOwnProperty(deepTemp)) {
+                        // console.log("Key 3 exists");
+                        parsedData += " ".repeat(4 * deepTemp) + deep_string_dict[deepTemp]
+                        delete deep_string_dict[deepTemp]
+                    }
+                }
+            }
+            
+            // loopParseXML(elements[0], parsedData);
+            // loopParsedDataElement.textContent = parsedData;
+
+            // var parsedData = originalXml.toUpperCase();
+            loopParsedDataPre.textContent = parsedData;
+        });
+
+        // var xmlString = '<select id="getDataDictionaryFieldConditionPage" resultType="java.util.Map"> select CommStructNo as "commStructNo", commStructFldNo as "commStructFieldNo" from t_pb_comm_struct_fld where trim(CommStructNo) = #{commStructNo} <if test="commStructFieldNoMinCondition != null"> and commStructFldNo &gt;= #{commStructFieldNoMinCondition} </if> <if test="commStructFieldNoMaxCondition != null"> and commStructFldNo &lt;= #{commStructFieldNoMaxCondition} </if> <if test="authValueList.size() != 1 and authValueList.size() != 0"><foreach collection="authValueList" item="authSymbol" index="index"><if test="index == 0">and (a.auth_Value like concat("%", concat(#{authValueList[${index}]}, "%"))</if><if test="index == 0">and (a.auth_Value like concat("%", concat(#{authValueList[${index}]}, "%"))</if></foreach ></if> order by c.${sort} ${direction} </select>';
+
+
+
+        function parseSQLLabel(childNode) {
+            var result = "<"
+            // var idAttribute = childNode.getAttribute('test');
+            if (childNode.getAttribute('id') !== null) {
+                result += childNode.tagName + " id=\"" + childNode.getAttribute('id') + "\""
+            }
+            if (childNode.getAttribute('parameterType') !== null) {
+                result += " parameterType=\"" + childNode.getAttribute('parameterType') + "\""
+            }
+            if (childNode.getAttribute('resultType') !== null) {
+                result += " resultType=\"" + childNode.getAttribute('resultType') + "\""
+            }
+            result += ">"
+            return result;
+        }
+
+        function parseIfLabel(childNode) {
+            var result = "<"
+            if (childNode.getAttribute('test') !== null) {
+                result += childNode.tagName + " test=\"" + childNode.getAttribute('test') + "\""
+            }
+            result += ">\n"
+            return result;
+        }
+
+        function parseForeachLabel(childNode) {
+            var result = "<"
+            if (childNode.getAttribute('collection') !== null) {
+                result += childNode.tagName + " collection=\"" + childNode.getAttribute('collection') + "\""
+            }
+            if (childNode.getAttribute('index') !== null) {
+                result += " index=\"" + childNode.getAttribute('index') + "\""
+            }
+            if (childNode.getAttribute('item') !== null) {
+                result += " item=\"" + childNode.getAttribute('item') + "\""
+            }
+            if (childNode.getAttribute('open') !== null) {
+                result += " open=\"" + childNode.getAttribute('open') + "\""
+            }
+            if (childNode.getAttribute('separator') !== null) {
+                result += " separator=\"" + childNode.getAttribute('separator') + "\""
+            }
+            if (childNode.getAttribute('close') !== null) {
+                result += " close=\"" + childNode.getAttribute('close') + "\""
+            }
+            result += ">" + "\n"
+            // "<" + childNode.tagName + " collection=\"" + idAttribute + "\">\n"
+            return result;
+        }
+
+        function parseOtherLabel(childNode) {
+            var result = "<"
+            result += childNode.tagName
+            result += ">"
+            return result;
+        }
+
+        function addPrefixToEachLine(content, pre) {
+            // 将内容按行拆分成数组
+            var lines = content.split('\n');
+
+            // 遍历每一行，在行首添加 pre
+            for (var i = 0; i < lines.length; i++) {
+                lines[i] = pre + lines[i];
+            }
+
+            // 将处理后的行重新组合成字符串
+            var result = lines.join('\n');
+            return result;
+        }
+
+        // function loopParseXML(XMLcontent, parsedData) {
+        //     console.log(parsedData);
+        //     // 遍历 label1 的所有子节点
+        //     for (var i = 0; i < XMLcontent.childNodes.length; i++) {
+        //         var childNode = XMLcontent.childNodes[i];
+
+        //         // 如果是元素节点，则添加到子标签数组中
+        //         if (childNode.nodeType === 1) {         // 1 表示元素节点
+        //             var idAttribute = childNode.getAttribute('id');
+        //             if (idAttribute !== null) {
+        //                 parsedData += "<" + childNode.tagName + " id=\"" + idAttribute + "\">\n";
+        //             }
+
+        //             var idAttribute = childNode.getAttribute('test');
+        //             if (idAttribute !== null) {
+        //                 parsedData += "<" + childNode.tagName + " test=\"" + idAttribute + "\">\n";
+        //             }
+
+        //             var idAttribute = childNode.getAttribute('collection');
+        //             if (idAttribute !== null) {
+        //                 parsedData += "<" + childNode.tagName + " collection=\"" + idAttribute + "\">\n";
+        //             }
+
+        //             loopParseXML(childNode, parsedData);
+        //             parsedData += "</" + childNode.tagName + ">\n";
+        //             // subLabels.push(childNode.tagName);
+        //         }
+        //         // 如果是文本节点
+        //         else if (childNode.nodeType === 3) {        // 3 表示文本节点
+        //             var content = childNode.nodeValue.trim();       // 去除文本节点两侧的空白
+        //             parsedData += "" + formatSQL(content) + "\n";
+        //             // // 如果是第一个子节点，则为前内容
+        //             // if (i === 0) {
+        //             //     beforeContent = content;
+        //             // }
+        //             // // 如果是最后一个子节点，则为后内容
+        //             // else if (i === XMLcontent.childNodes.length - 1) {
+        //             //     afterContent = content;
+        //             // }
+        //         }
+        //     }
+        // }
+        // CONCAT('AnsCode_', trim(tp.AnsCode))                    AS "id", 
+        // CONCAT(TRIM(tp.AnsCode), concat('/', TRIM(tp.Explain))) AS "text",
+        function formatSQL(sql) {
+            return sqlFormatter.format(sql, {
+                language: 'sql',
+                paramTypes: {
+                    custom: [
+                        { regex: String.raw`#\{(.+?)\}`},
+                        { regex: String.raw`#\{.+?\[.+?\]\}`},
+                        { regex: String.raw`\$\{.+?\}`},
+                        { regex: String.raw`trim\(.+?\)`, flags: 'i'},
+                        // { regex: String.raw`concat\((?:(?:[^()]+|\(.*?\))*)(?:,\s*trim\((?:[^()]+|\(.*?\))\))?(?:(?:[^()]+|\(.*?\))*)\)`},
+
+                        { regex: String.raw`concat\(.+?\) `, flags: 'i'},
+                        { regex: String.raw`concat\(.+?concat\(.+?\)\) `, flags: 'i'},
+                        { regex: String.raw`concat\(.+?concat\(.+?concat\(.+?\)\)\) `, flags: 'i'},
+                        { regex: String.raw`concat\(.+?concat\(.+?concat\(.+?concat\(.+?\)\)\)\) `, flags: 'i'},
+                        { regex: String.raw`concat\(.+?concat\(.+?concat\(.+?concat\(.+?concat\(.+?\)\)\)\)\) `, flags: 'i'},
+
+                        { regex: String.raw`concat(.+?)\)( *)as`, flags: 'i'},
+                        { regex: String.raw`concat(.+?)concat(.+?)\)\)( *)as`, flags: 'i'},
+                        { regex: String.raw`concat(.+?)concat(.+?)concat(.+?)\)\)\)( *)as`, flags: 'i'},
+                        { regex: String.raw`(\(*)concat(.+?)concat(.+?)concat(.+?)concat(.+?)\)\)\)\)( *)as`, flags: 'i'},
+
+                        { regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\) `, flags: 'i'},
+                        { regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\)( *)as`, flags: 'i'},
+                        { regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\)\)`, flags: 'i'},
+                        { regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\)\)( *)as(.*?),`, flags: 'i'},
+                        { regex: String.raw`CONCAT\(TRIM\((.+?)\),(.*?)\)\)\)`, flags: 'i'},
+                        { regex: String.raw`CONCAT\(TRIM\((.+?)\),(.*?)\)\)\)( *)as(.*?),`, flags: 'i'},
+
+                        { regex: String.raw`\(concat\(.*?trim\(.+?\),concat\(.*?trim\(.+?\)\)\)\)`, flags: 'i'},        // (concat(trim(p.DATAPKGNO),concat('/',trim(p.DATAPKGNAME))))
+                        { regex: String.raw`\(concat\(trim\(.+?\), concat\('\/', trim\(.+?\)\)\)\)`, flags: 'i'},       // case  when pd.IsMainDir = 1 then (concat(trim(DirCode), concat('/', trim(DirNameA))))  else (concat(trim(DirCode), concat('/', trim(DirNameB))))
+                        { regex: String.raw`concat\((.+?)concat\(#\{(.+?)\}.+(?:\)\))?`, flags: 'i'},           // concat('%',concat(#{authValue},'%'))
+
+                        { regex: String.raw`concat\(.+\) `, flags: 'i'},
+                        { regex: String.raw`(?!.*\bconcat\().*?=\s*concat\(.*?\)`, flags: 'i'},
+                        // { regex: String.raw`concat\('\{progrpId:', concat\(.\{proGrpId\}, concat\(',id:', concat\(trim\(.+?\), '\}'\)\)\)\)\)`, flags: 'i'},
+                        // { regex: String.raw`concat\('\{progrpId:', concat\(.\{proGrpId\}, concat\(',id:', concat\(trim\(.+?\), '\}'\)\)\)`, flags: 'i'},
+                        { regex: String.raw`concat\('\{progrpId:', concat\(#\{proGrpId\}, concat\(',id:', concat\(trim\(a\.protype\), '\}'\)\)\)\)\)`, flags: 'i'},
+                        //{ regex: String.raw`and.(.+?).=.concat(.+?)\)`, flags: 'i'},
+                        //{ regex: String.raw`and.(.+?).=.concat(.+?)concat(.+?)\)\)`, flags: 'i'},
+                        //{ regex: String.raw`and.(.+?).=.concat(.+?)concat(.+?)concat(.+?)\)\)\)`, flags: 'i'},
+                        //{ regex: String.raw`and.(.+?).=.concat(.+?)concat(.+?)concat(.+?)concat(.+?)\)\)\)\)`, flags: 'i'},
+
+                        //{ regex: String.raw`concat\((?:(?:[^()]+)|\([^()]+\))*\)`, flags: 'i'},
+                        
+                        { regex: String.raw`concat\(.+?\)`, flags: 'i'}, 
+                        
+                    ],
+                },
+            });
+        }
+    </script>
+</body>
+
+</html>
