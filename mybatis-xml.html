@@ -56,6 +56,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sql-formatter/dist/sql-formatter.min.js"></script>
     <script>
+        //let test_content = ")SELECT TRIM(b.obj_type) AS \"protype\", TRIM(b.obj_id) AS \"crtproinfo\", a.${key2} AS \"chnlno\", CONCAT(a.${key1}, CONCAT('/', TRIM(a.${key4}))) AS \"text\" FROM ${table} a, t_webae_authlist b, t_pb_project_info c WHERE a.${key2} != 'AAA' AND a.${key2} = #{busitype} AND ${key3} = TRIM(b.obj_id) AND TRIM(b.auth_type) = #{authType} AND TRIM(b.auth_id) = #{user} AND TRIM(b.obj_type) = #{objType} AND TRIM(c.crtprolv1) = #{objType} AND TRIM(c.crtproinfo) = a.${key1} AND TRIM(c.chnlno) = a.${key2} AND TRIM(c.proid) = #{proId} AND  "
+        //let [string1, string2] = splitStringByRightParenthesis(test_content)      // 从左往右，分为 "string1)"和"string2"
+        //test_content = "SELECT TRIM(b.obj_type) AS \"protype\", TRIM(b.obj_id) AS \"crtproinfo\", a.${key2} AS \"chnlno\", CONCAT(a.${key1}, CONCAT('/', TRIM(a.${key4}))) AS \"text\" FROM ${table} a, t_webae_authlist b, t_pb_project_info c WHERE a.${key2} != 'AAA' AND a.${key2} = #{busitype} AND ${key3} = TRIM(b.obj_id) AND TRIM(b.auth_type) = #{authType} AND TRIM(b.auth_id) = #{user} AND TRIM(b.obj_type) = #{objType} AND TRIM(c.crtprolv1) = #{objType} AND TRIM(c.crtproinfo) = a.${key1} AND TRIM(c.chnlno) = a.${key2} AND TRIM(c.proid) = #{proId} AND ("
+        //let [string3, string4] = splitStringByLeftParenthesis(test_content)      // 从右往左，分为 "string3"和"(string4"
+        //console.log("string1: " + string1);
+        //console.log("string2: " + string2);
+        //console.log("string3: " + string3);
+        //console.log("string4: " + string4);
 
         var parseButton = document.getElementById("parseButton");
 
@@ -91,12 +99,12 @@
             while (stack.length != 0) {
                 var childNode = stack.pop();
                 deep = childNode["deepdeep"];
-                console.log(childNode.tagName);
-                console.log(childNode.nodeType);
-                console.log(childNode.childNodes);
-                console.log("stack: " + stack.length);
+                console.log("tagName: " + childNode.tagName);
+                console.log("nodeType: " + childNode.nodeType);
+                console.log("childNodes: " + childNode.childNodes);
+                console.log("stack length: " + stack.length);
                 // childNode["deepdeep"] = "aaa"
-                console.log("deep" + childNode["deepdeep"]);
+                console.log("deep: " + childNode["deepdeep"]);
                 console.log(deep_string_dict);
                 console.log("\n");
 
@@ -137,19 +145,41 @@
                 // 如果是文本节点
                 else if (childNode.nodeType === 3) {        // 3 表示文本节点
                     var content = childNode.nodeValue.trim();       // 去除文本节点两侧的空白
-                    console.log(content)
+                    console.log("content  " + content)
                     var start = ""
                     var end = ""
                     // console.log(content[0] + content[1])
                     // console.log(content[content.length - 2] + content[content.length - 1])
-                    if (content[0] == ")"){
-                        start = ")"
-                        content = content.substring(1, content.length)
+                    let [string1, string2] = splitStringByRightParenthesis(content)      // 从左往右，分为 "string1)"和"string2"
+                    if (string2.length === 0){
+                        content = string1
+                        start = ""
                     }
-                    if (content[content.length - 1] == "("){
-                        end = "("
-                        content = content.substring(0, content.length-1)
+                    else{
+                        content = string2
+                        start = string1
                     }
+
+                    let [string3, string4] = splitStringByLeftParenthesis(content)      // 从右往左，分为 "string3"和"(string4"
+                    if (string4.length === 0){
+                        content = string3
+                        end = ""
+                    }
+                    else{
+                        content = string3
+                        end = string4
+                    }
+                    console.log("start:  " + start)
+                    console.log("splited content:  " + content)
+                    console.log("end:  " + end)
+                    //if (content[0] == ")"){
+                    //    start = ")"
+                    //    content = content.substring(1, content.length)
+                    //}
+                    //if (content[content.length - 1] == "("){
+                    //    end = "("
+                    //    content = content.substring(0, content.length-1)
+                    //}
                     resultString = start + addPrefixToEachLine(formatSQL(content), " ".repeat(4 * deep)) + end + "\n";
                     resultString = resultString.replace("\n\n", "\n");
                     resultString = resultString.replace("\n \n", "\n");
@@ -249,6 +279,56 @@
             return result;
         }
 
+        //从右往左搜索，寻找是否有单独的左括号(，如果有的话，把字符串截断，分为“string1”和“(string2”
+        function splitStringByLeftParenthesis(str) {
+            let index = -1;
+            let count = 0;
+
+            for (let i = str.length - 1; i >= 0; i--) {
+                if (str[i] === ')') {
+                    count++;
+                } else if (str[i] === '(') {
+                    if (count === 0) {
+                        index = i;
+                        break;
+                    } else {
+                        count--;
+                    }
+                }
+            }
+
+            if (index !== -1) {
+                return [str.substring(0, index), str.substring(index)];
+            } else {
+                return [str, ''];
+            }
+        }
+
+        //从左往右搜索，寻找是否有单独的右括号)，如果有的话，把字符串截断，分为“string1)”和“string2”
+        function splitStringByRightParenthesis(str) {
+            let index = -1;
+            let count = 0;
+
+            for (let i = 0; i < str.length; i++) {
+                if (str[i] === '(') {
+                    count++;
+                } else if (str[i] === ')') {
+                    if (count === 0) {
+                        index = i;
+                        break;
+                    } else {
+                        count--;
+                    }
+                }
+            }
+
+            if (index !== -1 && index !== str.length - 1) {
+                return [str.substring(0, index + 1), str.substring(index + 1)];
+            } else {
+                return [str, ''];
+            }
+        }
+
         // function loopParseXML(XMLcontent, parsedData) {
         //     console.log(parsedData);
         //     // 遍历 label1 的所有子节点
@@ -298,47 +378,47 @@
                 language: 'sql',
                 paramTypes: {
                     custom: [
-                        { regex: String.raw`#\{(.+?)\}`},
-                        { regex: String.raw`#\{.+?\[.+?\]\}`},
-                        { regex: String.raw`\$\{.+?\}`},
-                        { regex: String.raw`trim\(.+?\)`, flags: 'i'},
-                        // { regex: String.raw`concat\((?:(?:[^()]+|\(.*?\))*)(?:,\s*trim\((?:[^()]+|\(.*?\))\))?(?:(?:[^()]+|\(.*?\))*)\)`},
-
-                        { regex: String.raw`concat\(.+?\) `, flags: 'i'},
-                        { regex: String.raw`concat\(.+?concat\(.+?\)\) `, flags: 'i'},
-                        { regex: String.raw`concat\(.+?concat\(.+?concat\(.+?\)\)\) `, flags: 'i'},
-                        { regex: String.raw`concat\(.+?concat\(.+?concat\(.+?concat\(.+?\)\)\)\) `, flags: 'i'},
-                        { regex: String.raw`concat\(.+?concat\(.+?concat\(.+?concat\(.+?concat\(.+?\)\)\)\)\) `, flags: 'i'},
-
-                        { regex: String.raw`concat(.+?)\)( *)as`, flags: 'i'},
-                        { regex: String.raw`concat(.+?)concat(.+?)\)\)( *)as`, flags: 'i'},
-                        { regex: String.raw`concat(.+?)concat(.+?)concat(.+?)\)\)\)( *)as`, flags: 'i'},
-                        { regex: String.raw`(\(*)concat(.+?)concat(.+?)concat(.+?)concat(.+?)\)\)\)\)( *)as`, flags: 'i'},
-
-                        { regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\) `, flags: 'i'},
-                        { regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\)( *)as`, flags: 'i'},
-                        { regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\)\)`, flags: 'i'},
-                        { regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\)\)( *)as(.*?),`, flags: 'i'},
-                        { regex: String.raw`CONCAT\(TRIM\((.+?)\),(.*?)\)\)\)`, flags: 'i'},
-                        { regex: String.raw`CONCAT\(TRIM\((.+?)\),(.*?)\)\)\)( *)as(.*?),`, flags: 'i'},
-
-                        { regex: String.raw`\(concat\(.*?trim\(.+?\),concat\(.*?trim\(.+?\)\)\)\)`, flags: 'i'},        // (concat(trim(p.DATAPKGNO),concat('/',trim(p.DATAPKGNAME))))
-                        { regex: String.raw`\(concat\(trim\(.+?\), concat\('\/', trim\(.+?\)\)\)\)`, flags: 'i'},       // case  when pd.IsMainDir = 1 then (concat(trim(DirCode), concat('/', trim(DirNameA))))  else (concat(trim(DirCode), concat('/', trim(DirNameB))))
-                        { regex: String.raw`concat\((.+?)concat\(#\{(.+?)\}.+(?:\)\))?`, flags: 'i'},           // concat('%',concat(#{authValue},'%'))
-
-                        { regex: String.raw`concat\(.+\) `, flags: 'i'},
-                        { regex: String.raw`(?!.*\bconcat\().*?=\s*concat\(.*?\)`, flags: 'i'},
-                        // { regex: String.raw`concat\('\{progrpId:', concat\(.\{proGrpId\}, concat\(',id:', concat\(trim\(.+?\), '\}'\)\)\)\)\)`, flags: 'i'},
-                        // { regex: String.raw`concat\('\{progrpId:', concat\(.\{proGrpId\}, concat\(',id:', concat\(trim\(.+?\), '\}'\)\)\)`, flags: 'i'},
-                        { regex: String.raw`concat\('\{progrpId:', concat\(#\{proGrpId\}, concat\(',id:', concat\(trim\(a\.protype\), '\}'\)\)\)\)\)`, flags: 'i'},
-                        //{ regex: String.raw`and.(.+?).=.concat(.+?)\)`, flags: 'i'},
-                        //{ regex: String.raw`and.(.+?).=.concat(.+?)concat(.+?)\)\)`, flags: 'i'},
-                        //{ regex: String.raw`and.(.+?).=.concat(.+?)concat(.+?)concat(.+?)\)\)\)`, flags: 'i'},
-                        //{ regex: String.raw`and.(.+?).=.concat(.+?)concat(.+?)concat(.+?)concat(.+?)\)\)\)\)`, flags: 'i'},
-
-                        //{ regex: String.raw`concat\((?:(?:[^()]+)|\([^()]+\))*\)`, flags: 'i'},
-                        
-                        { regex: String.raw`concat\(.+?\)`, flags: 'i'}, 
+                        { regex: String.raw`#\{(.+?)\}` },
+                        //{ regex: String.raw`#\{.+?\[.+?\]\}`},
+                        { regex: String.raw`\$\{(.+?)\}`},
+                        //{ regex: String.raw`trim\(.+?\)`, flags: 'i'},
+                        //// { regex: String.raw`concat\((?:(?:[^()]+|\(.*?\))*)(?:,\s*trim\((?:[^()]+|\(.*?\))\))?(?:(?:[^()]+|\(.*?\))*)\)`},
+                        //
+                        //{ regex: String.raw`concat\(.+?\) `, flags: 'i'},
+                        //{ regex: String.raw`concat\(.+?concat\(.+?\)\) `, flags: 'i'},
+                        //{ regex: String.raw`concat\(.+?concat\(.+?concat\(.+?\)\)\) `, flags: 'i'},
+                        //{ regex: String.raw`concat\(.+?concat\(.+?concat\(.+?concat\(.+?\)\)\)\) `, flags: 'i'},
+                        //{ regex: String.raw`concat\(.+?concat\(.+?concat\(.+?concat\(.+?concat\(.+?\)\)\)\)\) `, flags: 'i'},
+                        //
+                        //{ regex: String.raw`concat(.+?)\)( *)as`, flags: 'i'},
+                        //{ regex: String.raw`concat(.+?)concat(.+?)\)\)( *)as`, flags: 'i'},
+                        //{ regex: String.raw`concat(.+?)concat(.+?)concat(.+?)\)\)\)( *)as`, flags: 'i'},
+                        //{ regex: String.raw`(\(*)concat(.+?)concat(.+?)concat(.+?)concat(.+?)\)\)\)\)( *)as`, flags: 'i'},
+                        //
+                        //{ regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\) `, flags: 'i'},
+                        //{ regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\)( *)as`, flags: 'i'},
+                        //{ regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\)\)`, flags: 'i'},
+                        //{ regex: String.raw`concat\(trim\((.+?)\),(.*?)\)\)\)( *)as(.*?),`, flags: 'i'},
+                        //{ regex: String.raw`CONCAT\(TRIM\((.+?)\),(.*?)\)\)\)`, flags: 'i'},
+                        //{ regex: String.raw`CONCAT\(TRIM\((.+?)\),(.*?)\)\)\)( *)as(.*?),`, flags: 'i'},
+                        //
+                        //{ regex: String.raw`\(concat\(.*?trim\(.+?\),concat\(.*?trim\(.+?\)\)\)\)`, flags: 'i'},        // (concat(trim(p.DATAPKGNO),concat('/',trim(p.DATAPKGNAME))))
+                        //{ regex: String.raw`\(concat\(trim\(.+?\), concat\('\/', trim\(.+?\)\)\)\)`, flags: 'i'},       // case  when pd.IsMainDir = 1 then (concat(trim(DirCode), concat('/', trim(DirNameA))))  else (concat(trim(DirCode), concat('/', trim(DirNameB))))
+                        //{ regex: String.raw`concat\((.+?)concat\(#\{(.+?)\}.+(?:\)\))?`, flags: 'i'},           // concat('%',concat(#{authValue},'%'))
+                        //
+                        //{ regex: String.raw`concat\(.+\) `, flags: 'i'},
+                        //{ regex: String.raw`(?!.*\bconcat\().*?=\s*concat\(.*?\)`, flags: 'i'},
+                        //// { regex: String.raw`concat\('\{progrpId:', concat\(.\{proGrpId\}, concat\(',id:', concat\(trim\(.+?\), '\}'\)\)\)\)\)`, flags: 'i'},
+                        //// { regex: String.raw`concat\('\{progrpId:', concat\(.\{proGrpId\}, concat\(',id:', concat\(trim\(.+?\), '\}'\)\)\)`, flags: 'i'},
+                        //{ regex: String.raw`concat\('\{progrpId:', concat\(#\{proGrpId\}, concat\(',id:', concat\(trim\(a\.protype\), '\}'\)\)\)\)\)`, flags: 'i'},
+                        ////{ regex: String.raw`and.(.+?).=.concat(.+?)\)`, flags: 'i'},
+                        ////{ regex: String.raw`and.(.+?).=.concat(.+?)concat(.+?)\)\)`, flags: 'i'},
+                        ////{ regex: String.raw`and.(.+?).=.concat(.+?)concat(.+?)concat(.+?)\)\)\)`, flags: 'i'},
+                        ////{ regex: String.raw`and.(.+?).=.concat(.+?)concat(.+?)concat(.+?)concat(.+?)\)\)\)\)`, flags: 'i'},
+                        //
+                        ////{ regex: String.raw`concat\((?:(?:[^()]+)|\([^()]+\))*\)`, flags: 'i'},
+                        //
+                        //{ regex: String.raw`concat\(.+?\)`, flags: 'i'},
                         
                     ],
                 },
