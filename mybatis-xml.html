@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XML 解析验证</title>
+    <title>parsing SQL with mybatis XML label</title>
     <style>
         /* .container {
             display: flex;
@@ -43,9 +43,9 @@
             <!-- <h2>原始 XML 字符串</h2> -->
             <pre id="originalXml" contenteditable></pre>
         </div>
-        <button id="parseButton">解析 XML</button>
+        <button id="parseButton">parse</button>
         <div class="xml-container">
-            <h3>递归解析后的数据</h3>
+            <h3>parsed data</h3>
             <pre id="loopParsedData" style="font-size: 18px;"></pre>
         </div>
         <!-- <div class="xml-container">
@@ -74,7 +74,7 @@
         // 给按钮绑定点击事件
         parseButton.addEventListener("click", function () {
 
-            var xmlString = originalXmlPre.textContent;
+            var xmlString = originalXmlPre.textContent;     // 输入
             var parsedData = '';
             loopParsedDataPre.textContent = parsedData;
 
